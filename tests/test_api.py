@@ -2,7 +2,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from app import API
+from app import API, page_url
 
 
 class ApiTests(unittest.TestCase):
@@ -11,6 +11,9 @@ class ApiTests(unittest.TestCase):
             source = Path(directory) / "voiceover.mp3"
             source.touch()
             self.assertEqual(API().select(str(source)), {"name": "voiceover.mp3"})
+    def test_page_url_is_a_filesystem_path_not_a_file_uri(self) -> None:
+        self.assertFalse(page_url().startswith("file://"))
+        self.assertTrue(Path(page_url()).is_file())
 
 
 if __name__ == '__main__':

@@ -40,11 +40,15 @@ def resource_path(name: str) -> Path:
     return base / name
 
 
+def page_url() -> str:
+    return str(resource_path("index.html"))
+
+
 def main() -> None:
     api = API()
     window = webview.create_window(
         "VocalStripper",
-        resource_path("index.html").as_uri(),
+        page_url(),
         js_api=api,
         width=560,
         height=430,
