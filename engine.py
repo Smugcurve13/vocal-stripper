@@ -12,25 +12,33 @@ def device() -> str:
     return "mps" if torch.backends.mps.is_available() else "cpu"
 
 
-def output_path(source: Path) -> Path:
-    return source.with_name(f"{source.stem}_vocals.wav")
+def output_path(source: Path, mode: str) -> Path:
+    return source.with_name(f"{source.stem}_{mode}.wav")
 
 
-def separate(source: Path, status: Callable[[str], None] = print) -> Path:
+def separate(
+    source: Path,
+    mode: str = "instrumental",
+    status: Callable[[str], None] = print,
+) -> Path:
     source = source.expanduser().resolve()
     if not source.is_file():
         raise FileNotFoundError(source)
     if source.suffix.lower() not in SUPPORTED_SUFFIXES:
         raise ValueError("Choose an MP3, MP4, M4A, MOV, or WAV file.")
 
+    if mode not in {"instrumental", "vocals"}:
+        raise ValueError("Choose instrumental or vocals.")
+
     from demucs.separate import main
 
-    status("Separating vocals. The first run downloads Demucs's model.")
+    stem = "no_vocals" if mode == "instrumental" else "vocals"
+    status(f"Separating {mode}. The first run downloads Demucs's model.")
     with tempfile.TemporaryDirectory(prefix="vocal-stripper-") as temp_dir:
         main(["--two-stems", "vocals", "--device", device(), "--out", temp_dir, str(source)])
-        vocals = next(Path(temp_dir).rglob("vocals.wav"), None)
-        if vocals is None:
-            raise RuntimeError("Demucs finished without producing a vocals file.")
-        target = output_path(source)
-        shutil.copy2(vocals, target)
+        output = next(Path(temp_dir).rglob(f"{stem}.wav"), None)
+        if output is None:
+            raise RuntimeError(f"Demucs finished without producing {mode}.")
+        target = output_path(source, mode)
+        shutil.copy2(output, target)
     return target

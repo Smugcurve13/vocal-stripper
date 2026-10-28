@@ -28,10 +28,10 @@ class API:
         )
         return self.select(files[0]) if files else None
 
-    def extract(self) -> dict[str, str]:
+    def extract(self, mode: str = "instrumental") -> dict[str, str]:
         if self.source is None:
             raise ValueError("Choose a file first.")
-        target = separate(self.source)
+        target = separate(self.source, mode)
         return {"path": str(target), "name": target.name}
 
 

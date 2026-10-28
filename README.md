@@ -1,8 +1,8 @@
 # VocalStripper
 
-A minimal desktop app that extracts the vocal/spoken-word track from a local MP3, MP4, M4A, MOV, or WAV using Demucs.
+A minimal desktop app that extracts either the instrumental/no-vocals track or the vocal/spoken-word track from a local MP3, MP4, M4A, MOV, or WAV using Demucs.
 
-It writes `<source>_vocals.wav` beside the selected file. The first extraction downloads the Demucs model.
+Instrumental is the default and writes `<source>_instrumental.wav`; vocals writes `<source>_vocals.wav`. The first extraction downloads the Demucs model.
 
 ## Run from source
 
