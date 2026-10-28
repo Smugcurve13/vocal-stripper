@@ -9,6 +9,7 @@ from engine import SUPPORTED_SUFFIXES, separate
 class API:
     def __init__(self) -> None:
         self.source: Path | None = None
+        self.output_dir = Path.home() / "Downloads"
         self.window: webview.Window | None = None
 
     def select(self, filename: str) -> dict[str, str]:
@@ -28,10 +29,26 @@ class API:
         )
         return self.select(files[0]) if files else None
 
+    def select_output_folder(self, folder: str) -> dict[str, str]:
+        output_dir = Path(folder).expanduser()
+        if not output_dir.is_dir():
+            raise ValueError("Choose an existing output folder.")
+        self.output_dir = output_dir
+        return {"path": str(output_dir)}
+
+    def choose_output_folder(self) -> dict[str, str] | None:
+        if self.window is None:
+            raise RuntimeError("Window is not ready.")
+        folders = self.window.create_file_dialog(
+            webview.FOLDER_DIALOG,
+            directory=str(self.output_dir),
+        )
+        return self.select_output_folder(folders[0]) if folders else None
+
     def extract(self, mode: str = "instrumental") -> dict[str, str]:
         if self.source is None:
             raise ValueError("Choose a file first.")
-        target = separate(self.source, mode)
+        target = separate(self.source, mode, output_dir=self.output_dir)
         return {"path": str(target), "name": target.name}
 
 

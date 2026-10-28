@@ -2,7 +2,7 @@
 
 A minimal desktop app that extracts either the instrumental/no-vocals track or the vocal/spoken-word track from a local MP3, MP4, M4A, MOV, or WAV using Demucs.
 
-Instrumental is the default and writes `<source>_instrumental.wav`; vocals writes `<source>_vocals.wav`. Both save to `~/Downloads`. The first extraction downloads the Demucs model.
+Instrumental is the default and writes `<source>_instrumental.wav`; vocals writes `<source>_vocals.wav`. `~/Downloads` is the default output folder, and the app can change it before extraction. The first extraction downloads the Demucs model.
 
 ## Run from source
 

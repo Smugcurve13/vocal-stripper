@@ -12,16 +12,18 @@ def device() -> str:
     return "mps" if torch.backends.mps.is_available() else "cpu"
 
 
-def output_path(source: Path, mode: str) -> Path:
-    downloads = Path.home() / "Downloads"
-    downloads.mkdir(exist_ok=True)
-    return downloads / f"{source.stem}_{mode}.wav"
+def output_path(source: Path, mode: str, output_dir: Path | None = None) -> Path:
+    if output_dir is None:
+        output_dir = Path.home() / "Downloads"
+        output_dir.mkdir(exist_ok=True)
+    return output_dir.expanduser() / f"{source.stem}_{mode}.wav"
 
 
 def separate(
     source: Path,
     mode: str = "instrumental",
     status: Callable[[str], None] = print,
+    output_dir: Path | None = None,
 ) -> Path:
     source = source.expanduser().resolve()
     if not source.is_file():
@@ -41,6 +43,6 @@ def separate(
         output = next(Path(temp_dir).rglob(f"{stem}.wav"), None)
         if output is None:
             raise RuntimeError(f"Demucs finished without producing {mode}.")
-        target = output_path(source, mode)
+        target = output_path(source, mode, output_dir)
         shutil.copy2(output, target)
     return target

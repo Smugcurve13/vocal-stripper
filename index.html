@@ -39,8 +39,9 @@
     .mode small { font: 11px/1.35 Inter, ui-sans-serif, sans-serif; letter-spacing: 0; text-transform: none; }
     .mode.active { border-color: var(--cyan); background: linear-gradient(120deg, #5de8ff1b, #9f7cff12); color: var(--ink); box-shadow: inset 3px 0 var(--cyan); }
     #extract { width: 100%; margin-top: 8px; background: linear-gradient(100deg, var(--cyan), #8a9fff); color: #061018; box-shadow: 0 8px 28px #5de8ff33; }
-    .output { margin: 13px 0 0; color: #728196; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
-    .output b { color: var(--muted); font-weight: 600; }
+    .output { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--line); color: #728196; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
+    .output b { display: block; margin-top: 4px; max-width: 330px; overflow: hidden; color: var(--muted); font-weight: 600; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
+    #choose-output { min-height: 32px; padding: 0 10px; border: 1px solid #3e5268; background: #192432; color: var(--ink); font-size: 10px; }
     #progress { height: 4px; margin-top: 14px; overflow: hidden; background: #1d2a38; opacity: 0; transition: opacity .2s ease; }
     #progress i { display: block; width: 38%; height: 100%; background: linear-gradient(90deg, transparent, var(--cyan), var(--violet), transparent); transform: translateX(-120%); }
     #progress.active { opacity: 1; }
@@ -59,6 +60,7 @@
     <section class="console">
       <div class="console-head"><span>separation console</span><span class="lights"><i></i><i></i><i></i></span></div>
       <div class="content">
+        <div class="output"><span>Output folder <b id="output-folder">~/Downloads</b></span><button id="choose-output">Change</button></div>
         <div id="file">Awaiting source file…</div>
         <button class="pick" id="choose">Choose audio or video</button>
         <div class="modes" role="group" aria-label="Output mode">
@@ -66,7 +68,6 @@
           <button class="mode" data-mode="vocals" aria-pressed="false"><b>Vocals</b><small>Remove the instrumental.</small></button>
         </div>
         <button id="extract" disabled>Generate instrumental</button>
-        <div class="output">Output folder <b>~/Downloads</b></div>
         <div id="progress" aria-hidden="true"><i></i></div>
         <div id="status">Select a source file to begin.</div>
       </div>
@@ -74,6 +75,8 @@
   </main>
   <script>
     const choose = document.querySelector('#choose');
+    const chooseOutput = document.querySelector('#choose-output');
+    const outputFolder = document.querySelector('#output-folder');
     const extract = document.querySelector('#extract');
     const file = document.querySelector('#file');
     const status = document.querySelector('#status');
@@ -104,6 +107,13 @@
 
     modes.forEach(button => button.addEventListener('click', () => updateMode(button.dataset.mode)));
 
+    chooseOutput.addEventListener('click', async () => {
+      const selected = await window.pywebview.api.choose_output_folder();
+      if (!selected) return;
+      outputFolder.textContent = selected.path;
+      status.textContent = 'Output folder updated.';
+    });
+
     choose.addEventListener('click', async () => {
       const selected = await window.pywebview.api.choose_file();
       if (!selected) return;
@@ -116,19 +126,21 @@
     extract.addEventListener('click', async () => {
       extract.disabled = true;
       choose.disabled = true;
+      chooseOutput.disabled = true;
       modes.forEach(button => button.disabled = true);
       status.textContent = `Separating ${mode} stem — 00:00`;
       setProcessing(true);
       await new Promise(requestAnimationFrame);
       try {
         const result = await window.pywebview.api.extract(mode);
-        status.textContent = `Saved to ~/Downloads/${result.name}`;
+        status.textContent = `Saved ${result.path}`;
       } catch (error) {
         status.textContent = error.message || `Could not generate ${mode}.`;
       } finally {
         setProcessing(false);
         extract.disabled = false;
         choose.disabled = false;
+        chooseOutput.disabled = false;
         modes.forEach(button => button.disabled = false);
       }
     });

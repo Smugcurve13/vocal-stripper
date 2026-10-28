@@ -11,10 +11,10 @@ class OutputPathTests(unittest.TestCase):
             Path.home() / 'Downloads' / 'Ad Clip_vocals.wav',
         )
 
-    def test_output_path_saves_instrumentals_in_downloads(self) -> None:
+    def test_output_path_uses_the_selected_folder(self) -> None:
         self.assertEqual(
-            output_path(Path('/music/Ad Clip.mp4'), 'instrumental'),
-            Path.home() / 'Downloads' / 'Ad Clip_instrumental.wav',
+            output_path(Path('/music/Ad Clip.mp4'), 'instrumental', Path('/output')),
+            Path('/output/Ad Clip_instrumental.wav'),
         )
 
     def test_device_is_mps_or_cpu(self) -> None:
