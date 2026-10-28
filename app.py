@@ -50,9 +50,9 @@ def main() -> None:
         "VocalStripper",
         page_url(),
         js_api=api,
-        width=560,
-        height=430,
-        min_size=(460, 360),
+        width=632,
+        height=732,
+        resizable=False,
         background_color="#171717",
     )
     api.window = window
