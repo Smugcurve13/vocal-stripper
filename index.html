@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VocalStripper</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #171717; color: #f5f1e8; font: 16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { width: min(100%, 470px); padding: 36px; }
+    h1 { margin: 0 0 10px; font: 700 34px Georgia, serif; }
+    p { margin: 0; color: #cfc8bd; line-height: 1.5; }
+    #file { min-height: 48px; margin: 28px 0 12px; padding: 14px; border: 1px solid #454139; border-radius: 8px; color: #c4a574; overflow-wrap: anywhere; }
+    button { width: 100%; border: 0; border-radius: 8px; padding: 13px; margin-top: 10px; background: #c4a574; color: #000; cursor: pointer; font: 700 15px inherit; }
+    button:disabled { background: #4b4338; color: #a39b90; cursor: wait; }
+    #status { min-height: 24px; margin-top: 20px; color: #cfc8bd; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Remove the instrumental</h1>
+    <p>Choose an MP3 or MP4. VocalStripper saves the isolated vocal WAV beside it.</p>
+    <div id="file">No file selected</div>
+    <button id="choose">Choose audio or video</button>
+    <button id="extract" disabled>Extract vocals</button>
+    <div id="status">Ready</div>
+  </main>
+  <script>
+    const choose = document.querySelector('#choose');
+    const extract = document.querySelector('#extract');
+    const file = document.querySelector('#file');
+    const status = document.querySelector('#status');
+
+    choose.addEventListener('click', async () => {
+      const selected = await window.pywebview.api.choose_file();
+      if (!selected) return;
+      file.textContent = selected.name;
+      extract.disabled = false;
+      status.textContent = 'Ready';
+    });
+
+    extract.addEventListener('click', async () => {
+      extract.disabled = true;
+      choose.disabled = true;
+      status.textContent = 'Extracting vocals…';
+      await new Promise(requestAnimationFrame);
+      try {
+        const result = await window.pywebview.api.extract();
+        status.textContent = `Saved ${result.name} beside the source file.`;
+      } catch (error) {
+        status.textContent = error.message || 'Could not extract vocals.';
+      } finally {
+        extract.disabled = false;
+        choose.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
