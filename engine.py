@@ -13,7 +13,9 @@ def device() -> str:
 
 
 def output_path(source: Path, mode: str) -> Path:
-    return source.with_name(f"{source.stem}_{mode}.wav")
+    downloads = Path.home() / "Downloads"
+    downloads.mkdir(exist_ok=True)
+    return downloads / f"{source.stem}_{mode}.wav"
 
 
 def separate(

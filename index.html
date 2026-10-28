@@ -39,8 +39,15 @@
     .mode small { font: 11px/1.35 Inter, ui-sans-serif, sans-serif; letter-spacing: 0; text-transform: none; }
     .mode.active { border-color: var(--cyan); background: linear-gradient(120deg, #5de8ff1b, #9f7cff12); color: var(--ink); box-shadow: inset 3px 0 var(--cyan); }
     #extract { width: 100%; margin-top: 8px; background: linear-gradient(100deg, var(--cyan), #8a9fff); color: #061018; box-shadow: 0 8px 28px #5de8ff33; }
+    .output { margin: 13px 0 0; color: #728196; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
+    .output b { color: var(--muted); font-weight: 600; }
+    #progress { height: 4px; margin-top: 14px; overflow: hidden; background: #1d2a38; opacity: 0; transition: opacity .2s ease; }
+    #progress i { display: block; width: 38%; height: 100%; background: linear-gradient(90deg, transparent, var(--cyan), var(--violet), transparent); transform: translateX(-120%); }
+    #progress.active { opacity: 1; }
+    #progress.active i { animation: scan 1.15s linear infinite; }
     #status { min-height: 22px; margin-top: 14px; color: var(--muted); font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
     #status::before { content: ">_ "; color: var(--cyan); }
+    @keyframes scan { to { transform: translateX(320%); } }
     @media (max-width: 520px) { main { padding: 24px; } h1 { font-size: 38px; } }
   </style>
 </head>
@@ -59,6 +66,8 @@
           <button class="mode" data-mode="vocals" aria-pressed="false"><b>Vocals</b><small>Remove the instrumental.</small></button>
         </div>
         <button id="extract" disabled>Generate instrumental</button>
+        <div class="output">Output folder <b>~/Downloads</b></div>
+        <div id="progress" aria-hidden="true"><i></i></div>
         <div id="status">Select a source file to begin.</div>
       </div>
     </section>
@@ -68,8 +77,20 @@
     const extract = document.querySelector('#extract');
     const file = document.querySelector('#file');
     const status = document.querySelector('#status');
+    const progress = document.querySelector('#progress');
     const modes = [...document.querySelectorAll('.mode')];
     let mode = 'instrumental';
+    let timer;
+
+    function setProcessing(active) {
+      progress.classList.toggle('active', active);
+      if (!active) return clearInterval(timer);
+      const started = Date.now();
+      timer = setInterval(() => {
+        const seconds = Math.floor((Date.now() - started) / 1000);
+        status.textContent = `Separating ${mode} stem — ${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+      }, 250);
+    }
 
     function updateMode(next) {
       mode = next;
@@ -96,14 +117,16 @@
       extract.disabled = true;
       choose.disabled = true;
       modes.forEach(button => button.disabled = true);
-      status.textContent = `Separating ${mode}…`;
+      status.textContent = `Separating ${mode} stem — 00:00`;
+      setProcessing(true);
       await new Promise(requestAnimationFrame);
       try {
         const result = await window.pywebview.api.extract(mode);
-        status.textContent = `Saved ${result.name} beside the source file.`;
+        status.textContent = `Saved to ~/Downloads/${result.name}`;
       } catch (error) {
         status.textContent = error.message || `Could not generate ${mode}.`;
       } finally {
+        setProcessing(false);
         extract.disabled = false;
         choose.disabled = false;
         modes.forEach(button => button.disabled = false);
