@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title>VocalStripper</title>
+  <defs>
+    <linearGradient id="field" x1="112" y1="96" x2="900" y2="936" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#13293A"/>
+      <stop offset=".54" stop-color="#0A131D"/>
+      <stop offset="1" stop-color="#160E2A"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="254" y1="280" x2="790" y2="744" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#62EEFF"/>
+      <stop offset="1" stop-color="#A98AFF"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#field)"/>
+  <rect x="44" y="44" width="936" height="936" rx="192" fill="none" stroke="#7EEFFF" stroke-opacity=".18" stroke-width="4"/>
+  <circle cx="512" cy="512" r="326" fill="none" stroke="#75EFFF" stroke-opacity=".11" stroke-width="4"/>
+  <circle cx="512" cy="512" r="266" fill="none" stroke="#B29AFF" stroke-opacity=".10" stroke-width="4"/>
+  <path d="M206 512H302L374 330L468 694L558 222L648 662L724 512H818" fill="none" stroke="#12222E" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M206 512H302L374 330L468 694L558 222L648 662L724 512H818" fill="none" stroke="url(#wave)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <circle cx="206" cy="512" r="15" fill="#62EEFF"/>
+  <circle cx="818" cy="512" r="15" fill="#A98AFF"/>
+</svg>

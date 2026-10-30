@@ -22,7 +22,7 @@ brew install ffmpeg
 
 ```bash
 .venv/bin/python -m pip install pyinstaller
-.venv/bin/pyinstaller --windowed --name VocalStripper --add-data "index.html:." --hidden-import demucs.separate --collect-submodules demucs --collect-data demucs --collect-all torch --collect-all webview app.py
+.venv/bin/pyinstaller --windowed --name VocalStripper --icon assets/VocalStripper.icns --add-data "index.html:." --add-data "assets:assets" --hidden-import demucs.separate --collect-submodules demucs --collect-data demucs --collect-all torch --collect-all webview app.py
 ```
 
 The app is created at `dist/VocalStripper.app`.

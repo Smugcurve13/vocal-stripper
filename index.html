@@ -12,8 +12,7 @@
     main { position: relative; width: min(100%, 620px); margin: auto; padding: 30px 34px; }
     .topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; color: var(--muted); font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; text-transform: uppercase; }
     .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 700; }
-    .bot { display: grid; width: 25px; height: 25px; place-items: center; border: 1px solid #5de8ff80; border-radius: 7px 7px 2px 2px; color: var(--cyan); box-shadow: 0 0 22px #5de8ff3b; }
-    .bot::before { content: "◉"; font-size: 12px; }
+    .bot { display: block; width: 25px; height: 25px; border-radius: 7px; background: url("assets/logo.svg") center/cover; box-shadow: 0 0 18px #5de8ff40; }
     .ready { display: flex; align-items: center; gap: 7px; }
     .ready::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #73ffbe; box-shadow: 0 0 10px #73ffbe; }
     h1 { max-width: 500px; margin: 0; font: 500 clamp(35px, 7vw, 54px)/.96 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: -.075em; }
