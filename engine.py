@@ -37,12 +37,14 @@ def separate(
     from demucs.separate import main
 
     stem = "no_vocals" if mode == "instrumental" else "vocals"
-    status(f"Separating {mode}. The first run downloads Demucs's model.")
+    status(f"Loading model for {mode} separation.")
     with tempfile.TemporaryDirectory(prefix="vocal-stripper-") as temp_dir:
+        status(f"Separating {mode} stem.")
         main(["--two-stems", "vocals", "--device", device(), "--out", temp_dir, str(source)])
         output = next(Path(temp_dir).rglob(f"{stem}.wav"), None)
         if output is None:
             raise RuntimeError(f"Demucs finished without producing {mode}.")
+        status("Writing output file.")
         target = output_path(source, mode, output_dir)
         shutil.copy2(output, target)
     return target

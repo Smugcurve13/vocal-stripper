@@ -1,16 +1,68 @@
+import fcntl
+import logging
+import multiprocessing
+import subprocess
 import sys
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from threading import Lock, Thread
+from typing import Callable
 
 import webview
 
 from engine import SUPPORTED_SUFFIXES, separate
 
+APP_DATA = Path.home() / "Library" / "Application Support" / "VocalStripper"
+LOG_DIR = APP_DATA / "logs"
+LOG_PATH = LOG_DIR / "vocalstripper.log"
+LOCK_PATH = APP_DATA / "VocalStripper.lock"
+_instance_lock = None
+
+
+def claim_instance(lock_path: Path = LOCK_PATH) -> bool:
+    global _instance_lock
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("w")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        return False
+    # ponytail: one app-wide lock; add multi-window support only if intentional.
+    _instance_lock = handle
+    return True
+
+
+def app_logger() -> logging.Logger:
+    logger = logging.getLogger("vocalstripper")
+    if logger.handlers:
+        return logger
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    handler = RotatingFileHandler(LOG_PATH, maxBytes=1_000_000, backupCount=3)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    return logger
+
+
+logger = app_logger()
+
 
 class API:
-    def __init__(self) -> None:
+    def __init__(self, runner: Callable = separate) -> None:
         self.source: Path | None = None
         self.output_dir = Path.home() / "Downloads"
         self.window: webview.Window | None = None
+        self.runner = runner
+        self.job_lock = Lock()
+        self.job = {"state": "idle", "events": [], "path": None, "error": None}
+
+    def _event(self, message: str) -> None:
+        event = {"time": datetime.now().strftime("%H:%M:%S"), "message": message}
+        with self.job_lock:
+            self.job["events"].append(event)
+        logger.info(message)
 
     def select(self, filename: str) -> dict[str, str]:
         source = Path(filename)
@@ -45,11 +97,51 @@ class API:
         )
         return self.select_output_folder(folders[0]) if folders else None
 
-    def extract(self, mode: str = "instrumental") -> dict[str, str]:
+    def start_extract(self, mode: str = "instrumental") -> dict[str, str]:
         if self.source is None:
             raise ValueError("Choose a file first.")
-        target = separate(self.source, mode, output_dir=self.output_dir)
-        return {"path": str(target), "name": target.name}
+        with self.job_lock:
+            if self.job["state"] == "running":
+                raise RuntimeError("A separation is already running.")
+            self.job = {"state": "running", "events": [], "path": None, "error": None}
+        source, output_dir = self.source, self.output_dir
+        self._event(f"Queued {source.name} for {mode} separation.")
+        Thread(target=self._run, args=(source, output_dir, mode), daemon=True).start()
+        return {"state": "running"}
+
+    def _run(self, source: Path, output_dir: Path, mode: str) -> None:
+        try:
+            target = self.runner(source, mode, status=self._event, output_dir=output_dir)
+        except Exception as error:
+            logger.exception("Separation failed")
+            self._event(f"Failed: {error}")
+            with self.job_lock:
+                self.job["state"] = "error"
+                self.job["error"] = str(error)
+            return
+        self._event(f"Saved {target.name}.")
+        with self.job_lock:
+            self.job["state"] = "done"
+            self.job["path"] = str(target)
+
+    def job_status(self) -> dict:
+        with self.job_lock:
+            return {
+                "state": self.job["state"],
+                "events": list(self.job["events"]),
+                "path": self.job["path"],
+                "error": self.job["error"],
+            }
+
+    def reveal_output(self) -> None:
+        with self.job_lock:
+            path = self.job["path"]
+        if not path:
+            raise ValueError("No completed output yet.")
+        subprocess.Popen(["open", "-R", path])
+
+    def reveal_logs(self) -> None:
+        subprocess.Popen(["open", str(LOG_DIR)])
 
 
 def resource_path(name: str) -> Path:
@@ -62,6 +154,8 @@ def page_url() -> str:
 
 
 def main() -> None:
+    if not claim_instance():
+        return
     api = API()
     window = webview.create_window(
         "VocalStripper",
@@ -77,4 +171,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()
