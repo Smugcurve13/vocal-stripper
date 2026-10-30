@@ -11,11 +11,12 @@ from typing import Callable
 
 import webview
 
-from engine import SUPPORTED_SUFFIXES, separate
+from engine import SUPPORTED_SUFFIXES, download_model, separate
 
 APP_DATA = Path.home() / "Library" / "Application Support" / "VocalStripper"
 LOG_DIR = APP_DATA / "logs"
 LOG_PATH = LOG_DIR / "vocalstripper.log"
+MODEL_MARKER = APP_DATA / "htdemucs-ready"
 LOCK_PATH = APP_DATA / "VocalStripper.lock"
 _instance_lock = None
 
@@ -50,11 +51,24 @@ logger = app_logger()
 
 
 class API:
-    def __init__(self, runner: Callable = separate) -> None:
+    def __init__(
+        self,
+        runner: Callable = separate,
+        model_downloader: Callable = download_model,
+        model_marker: Path = MODEL_MARKER,
+    ) -> None:
         self.source: Path | None = None
         self.output_dir = Path.home() / "Downloads"
         self.window: webview.Window | None = None
         self.runner = runner
+        self.model_downloader = model_downloader
+        self.model_marker = model_marker
+        self.model_lock = Lock()
+        self.model = {
+            "state": "ready" if model_marker.is_file() else "missing",
+            "events": [],
+            "error": None,
+        }
         self.job_lock = Lock()
         self.job = {"state": "idle", "events": [], "path": None, "error": None}
 
@@ -63,6 +77,47 @@ class API:
         with self.job_lock:
             self.job["events"].append(event)
         logger.info(message)
+
+    def _model_event(self, message: str) -> None:
+        event = {"time": datetime.now().strftime("%H:%M:%S"), "message": message}
+        with self.model_lock:
+            self.model["events"].append(event)
+        logger.info(message)
+
+    def model_status(self) -> dict:
+        with self.model_lock:
+            return {
+                "state": self.model["state"],
+                "events": list(self.model["events"]),
+                "error": self.model["error"],
+            }
+
+    def start_model_download(self) -> dict[str, str]:
+        with self.model_lock:
+            if self.model["state"] == "ready":
+                return {"state": "ready"}
+            if self.model["state"] == "downloading":
+                raise RuntimeError("The HTDemucs model is already downloading.")
+            self.model = {"state": "downloading", "events": [], "error": None}
+        self._model_event("Preparing HTDemucs model download.")
+        Thread(target=self._download_model, daemon=True).start()
+        return {"state": "downloading"}
+
+    def _download_model(self) -> None:
+        try:
+            self.model_downloader(status=self._model_event)
+        except Exception as error:
+            logger.exception("Model download failed")
+            self._model_event(f"Model download failed: {error}")
+            with self.model_lock:
+                self.model["state"] = "error"
+                self.model["error"] = str(error)
+            return
+        self.model_marker.parent.mkdir(parents=True, exist_ok=True)
+        self.model_marker.touch()
+        self._model_event("Model ready on this Mac.")
+        with self.model_lock:
+            self.model["state"] = "ready"
 
     def select(self, filename: str) -> dict[str, str]:
         source = Path(filename)
@@ -98,6 +153,8 @@ class API:
         return self.select_output_folder(folders[0]) if folders else None
 
     def start_extract(self, mode: str = "instrumental") -> dict[str, str]:
+        if not self.model_marker.is_file():
+            raise RuntimeError("Download the HTDemucs model before separating audio.")
         if self.source is None:
             raise ValueError("Choose a file first.")
         with self.job_lock:

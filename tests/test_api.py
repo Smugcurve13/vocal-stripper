@@ -40,6 +40,37 @@ class ApiTests(unittest.TestCase):
                 app._instance_lock.close()
                 app._instance_lock = None
 
+    def test_model_download_marks_the_app_ready(self) -> None:
+        downloaded = Event()
+
+        def downloader(status) -> None:
+            status("Downloading HTDemucs model.")
+            downloaded.set()
+
+        with TemporaryDirectory() as directory:
+            marker = Path(directory) / "model-ready"
+            api = API(model_downloader=downloader, model_marker=marker)
+            self.assertEqual(api.model_status()["state"], "missing")
+            self.assertEqual(api.start_model_download(), {"state": "downloading"})
+            self.assertTrue(downloaded.wait(1))
+            for _ in range(20):
+                model = api.model_status()
+                if model["state"] != "downloading":
+                    break
+                sleep(0.01)
+            self.assertEqual(model["state"], "ready")
+            self.assertTrue(marker.is_file())
+            self.assertEqual(model["events"][-1]["message"], "Model ready on this Mac.")
+
+    def test_start_extract_requires_a_downloaded_model(self) -> None:
+        with TemporaryDirectory() as directory:
+            source = Path(directory) / "voiceover.mp3"
+            source.touch()
+            api = API(model_marker=Path(directory) / "missing-model")
+            api.select(str(source))
+            with self.assertRaisesRegex(RuntimeError, "Download the HTDemucs model"):
+                api.start_extract()
+
     def test_start_extract_records_completion_and_rejects_a_second_job(self) -> None:
         started = Event()
         finish = Event()
@@ -58,7 +89,9 @@ class ApiTests(unittest.TestCase):
             output = root / "output"
             source.touch()
             output.mkdir()
-            api = API(runner=runner)
+            marker = root / "model-ready"
+            marker.touch()
+            api = API(runner=runner, model_marker=marker)
             api.select(str(source))
             api.select_output_folder(str(output))
             self.assertEqual(api.start_extract(), {"state": "running"})

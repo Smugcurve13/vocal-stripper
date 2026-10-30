@@ -4,6 +4,15 @@ from pathlib import Path
 from typing import Callable
 
 SUPPORTED_SUFFIXES = {".mp3", ".mp4", ".m4a", ".mov", ".wav"}
+MODEL_NAME = "htdemucs"
+
+
+def download_model(status: Callable[[str], None] = print) -> None:
+    status("Downloading the HTDemucs model. This is a one-time setup.")
+    from demucs.pretrained import get_model
+
+    get_model(MODEL_NAME)
+    status("HTDemucs model download finished.")
 
 
 def device() -> str:
