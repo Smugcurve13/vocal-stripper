@@ -1,10 +1,28 @@
+import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Callable
 
 SUPPORTED_SUFFIXES = {".mp3", ".mp4", ".m4a", ".mov", ".wav"}
 MODEL_NAME = "htdemucs"
+
+
+def resource_base() -> Path:
+    return Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+
+
+def ffmpeg_directory(base: Path | None = None) -> Path | None:
+    directory = (base or resource_base()) / "assets" / "ffmpeg" / "macos"
+    return directory if all((directory / name).is_file() for name in ("ffmpeg", "ffprobe")) else None
+
+
+def configure_ffmpeg_path(base: Path | None = None) -> Path | None:
+    directory = ffmpeg_directory(base)
+    if directory:
+        os.environ["PATH"] = f"{directory}{os.pathsep}{os.environ.get('PATH', '')}"
+    return directory
 
 
 def download_model(status: Callable[[str], None] = print) -> None:
@@ -42,6 +60,10 @@ def separate(
 
     if mode not in {"instrumental", "vocals"}:
         raise ValueError("Choose instrumental or vocals.")
+
+    bundled_ffmpeg = configure_ffmpeg_path()
+    if bundled_ffmpeg:
+        status("Using bundled FFmpeg to read your media locally.")
 
     from demucs.separate import main
 

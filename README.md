@@ -12,17 +12,22 @@ python3.12 -m venv .venv
 .venv/bin/python app.py
 ```
 
-FFmpeg must be available on your PATH for MP3/MP4 input. On macOS:
+FFmpeg is bundled in the macOS app as an additional third-party dependency, so packaged builds can read MP3 and MP4 files without a separate FFmpeg installation. Source runs use the `ffmpeg` available on your PATH:
 
 ```bash
 brew install ffmpeg
 ```
 
+Read the in-app [Privacy & dependencies](privacy.html) page for the local-processing policy, model-download network use, and FFmpeg notice.
+
 ## Build a macOS app
 
+First fetch the pinned Apple Silicon FFmpeg and FFprobe binaries, then build:
+
 ```bash
+./scripts/fetch_ffmpeg_macos.sh
 .venv/bin/python -m pip install pyinstaller
-.venv/bin/pyinstaller --windowed --name VocalStripper --icon assets/VocalStripper.icns --add-data "index.html:." --add-data "assets:assets" --hidden-import demucs.separate --collect-submodules demucs --collect-data demucs --collect-all torch --collect-all webview app.py
+.venv/bin/pyinstaller --windowed --name VocalStripper --icon assets/VocalStripper.icns --add-data "index.html:." --add-data "privacy.html:." --add-data "assets/logo.svg:assets" --add-binary "assets/ffmpeg/macos/ffmpeg:assets/ffmpeg/macos" --add-binary "assets/ffmpeg/macos/ffprobe:assets/ffmpeg/macos" --hidden-import demucs.separate --collect-submodules demucs --collect-data demucs --collect-all torch --collect-all webview app.py
 ```
 
 The app is created at `dist/VocalStripper.app`.

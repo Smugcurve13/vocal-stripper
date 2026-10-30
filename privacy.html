@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VocalStripper — Privacy & dependencies</title>
+  <style>
+    :root { color-scheme: dark; --bg: #080b10; --ink: #f3f7fc; --muted: #aab7c8; --line: #2a4054; --cyan: #5de8ff; }
+    body { max-width: 720px; margin: 0 auto; padding: 44px 28px; color: var(--ink); background: var(--bg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    h1, h2 { line-height: 1.15; } h1 { color: var(--cyan); } h2 { margin-top: 2em; font-size: 1.1rem; }
+    p, li { color: var(--muted); } a { color: var(--cyan); } strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <h1>Privacy & third-party dependencies</h1>
+  <p><strong>VocalStripper processes the media file you select locally on your Mac.</strong> It does not upload your source audio or video, outputs, or activity log to VocalStripper or The Brandologist Co.</p>
+
+  <h2>HTDemucs model download</h2>
+  <p>On first setup, you explicitly request an HTDemucs model download. That request connects to the model host used by Demucs (Hugging Face) to retrieve the model files. Your selected media is not part of that download.</p>
+
+  <h2>Bundled FFmpeg</h2>
+  <p>VocalStripper includes FFmpeg and FFprobe as additional third-party dependencies for reading common audio and video formats. They run locally inside the app bundle and do not transmit your media. FFmpeg licensing and legal information is available at <a href="https://ffmpeg.org/legal.html" target="_blank" rel="noopener">ffmpeg.org/legal.html</a>.</p>
+
+  <h2>Local files and diagnostics</h2>
+  <p>Generated stems are saved only to the output folder you choose. Diagnostics are stored locally at <code>~/Library/Application Support/VocalStripper/logs/</code>. They are not sent anywhere unless you choose to share them yourself.</p>
+
+  <h2>No accounts or analytics</h2>
+  <p>VocalStripper has no sign-in, advertising SDK, or analytics tracker.</p>
+</body>
+</html>
