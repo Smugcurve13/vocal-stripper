@@ -1,17 +1,23 @@
 import fcntl
+import json
 import logging
 import multiprocessing
 import subprocess
 import sys
+import tempfile
+import time
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Event, Lock, Thread
 from typing import Callable
 
 import webview
+from webview.dom import DOMEventHandler
 
 from engine import SUPPORTED_SUFFIXES, download_model, separate
+import updater
+from version import __version__
 
 APP_DATA = Path.home() / "Library" / "Application Support" / "VocalStripper"
 LOG_DIR = APP_DATA / "logs"
@@ -71,6 +77,9 @@ class API:
         }
         self.job_lock = Lock()
         self.job = {"state": "idle", "events": [], "path": None, "error": None}
+        self.update_lock = Lock()
+        self.update_cancel = Event()
+        self.update = {"state": "idle", "info": None, "read": 0, "total": 0, "error": None, "zip": None}
 
     def _event(self, message: str) -> None:
         event = {"time": datetime.now().strftime("%H:%M:%S"), "message": message}
@@ -135,6 +144,70 @@ class API:
             file_types=("Media files (*.mp3;*.mp4;*.m4a;*.mov;*.wav)",),
         )
         return self.select(files[0]) if files else None
+
+    def update_status(self) -> dict:
+        with self.update_lock:
+            return dict(self.update)
+
+    def check_for_update(self) -> None:
+        if updater.consume_failure():
+            with self.update_lock:
+                self.update["error"] = "The last update could not be installed. Move VocalStripper to Applications and try again."
+        Thread(target=self._check_for_update, daemon=True).start()
+
+    def _check_for_update(self) -> None:
+        info = updater.check()
+        if info:
+            with self.update_lock:
+                self.update.update(state="available", info=info, error=None)
+
+    def start_update_download(self) -> dict[str, str]:
+        with self.update_lock:
+            info = self.update["info"]
+            if self.update["state"] != "available" or not info:
+                raise RuntimeError("No update is ready to download.")
+            reason = updater.blocked_reason(info["size"])
+            if reason:
+                raise RuntimeError(reason)
+            self.update_cancel.clear()
+            self.update.update(state="downloading", read=0, total=info["size"], error=None)
+        Thread(target=self._download_update, args=(info,), daemon=True).start()
+        return {"state": "downloading"}
+
+    def _download_update(self, info: dict) -> None:
+        target = Path(tempfile.gettempdir()) / "vocalstripper-update.zip"
+        try:
+            complete = updater.download(
+                info["url"], target,
+                progress_callback=self._update_progress,
+                is_cancelled=self.update_cancel.is_set,
+            )
+        except Exception as error:
+            logger.exception("Update download failed")
+            with self.update_lock:
+                self.update.update(state="error", error=str(error))
+            return
+        with self.update_lock:
+            self.update.update(state="downloaded" if complete else "available", zip=str(target) if complete else None)
+
+    def _update_progress(self, read: int, total: int) -> None:
+        with self.update_lock:
+            self.update.update(read=read, total=total)
+
+    def install_update(self) -> dict[str, str]:
+        with self.update_lock:
+            zip_path = self.update["zip"]
+            if self.update["state"] != "downloaded" or not zip_path:
+                raise RuntimeError("Download the update before installing it.")
+            self.update["state"] = "installing"
+        updater.apply(Path(zip_path))
+        Thread(target=self._close_for_update, daemon=True).start()
+        return {"state": "installing"}
+
+    def _close_for_update(self) -> None:
+        time.sleep(0.2)
+        if self.window:
+            self.window.destroy()
 
     def select_output_folder(self, folder: str) -> dict[str, str]:
         output_dir = Path(folder).expanduser()
@@ -210,12 +283,37 @@ def page_url() -> str:
     return str(resource_path("index.html"))
 
 
+def dropped_path(event: dict) -> str:
+    transfer = event.get("dataTransfer") or event.get("domTransfer") or {}
+    files = transfer.get("files") or []
+    if not files:
+        raise ValueError("Drop an MP3, MP4, M4A, MOV, or WAV file.")
+    path = files[0].get("pywebviewFullPath") or files[0].get("path")
+    if not path:
+        raise ValueError("Could not read the dropped file path.")
+    return path
+
+
+def bind_drag_drop(window: webview.Window, api: API) -> None:
+    def select_dropped_file(event: dict) -> None:
+        try:
+            selected = api.select(dropped_path(event))
+            window.run_js(f"window.vocalStripperSelected({json.dumps(selected['name'])})")
+        except ValueError as error:
+            window.run_js(f"window.vocalStripperDropError({json.dumps(str(error))})")
+
+    def register_drop_handler() -> None:
+        window.dom.document.events.drop += DOMEventHandler(select_dropped_file, True)
+
+    window.events.loaded += register_drop_handler
+
+
 def main() -> None:
     if not claim_instance():
         return
     api = API()
     window = webview.create_window(
-        "VocalStripper",
+        f"VocalStripper v{__version__}",
         page_url(),
         js_api=api,
         width=632,
@@ -224,7 +322,7 @@ def main() -> None:
         background_color="#171717",
     )
     api.window = window
-    webview.start()
+    webview.start(bind_drag_drop, window, api)
 
 
 if __name__ == "__main__":

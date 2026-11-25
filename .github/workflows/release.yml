@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt pyinstaller
+      - run: ./scripts/fetch_ffmpeg_macos.sh
+      - run: pyinstaller VocalStripper.spec --noconfirm --clean
+      - run: |
+          codesign --force --deep --sign - dist/VocalStripper.app
+          codesign --verify --deep --strict dist/VocalStripper.app
+      - run: |
+          ditto -c -k --sequesterRsrc --keepParent dist/VocalStripper.app \
+            "VocalStripper-macos-arm64-${VERSION}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vocal-stripper-macos
+          path: VocalStripper-macos-arm64-${{ env.VERSION }}.zip
+          retention-days: 1
+
+  release:
+    needs: build-macos
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vocal-stripper-macos
+          path: dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: VocalStripper ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          prerelease: false
+          generate_release_notes: true
+          files: dist/VocalStripper-macos-arm64-${{ github.ref_name }}.zip

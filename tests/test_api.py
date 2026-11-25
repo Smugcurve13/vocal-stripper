@@ -7,7 +7,7 @@ import sys
 import unittest
 
 import app
-from app import API, claim_instance, page_url
+from app import API, claim_instance, dropped_path, page_url
 
 
 class ApiTests(unittest.TestCase):
@@ -19,6 +19,14 @@ class ApiTests(unittest.TestCase):
     def test_select_output_folder(self) -> None:
         with TemporaryDirectory() as directory:
             self.assertEqual(API().select_output_folder(directory), {"path": directory})
+
+    def test_dropped_path_prefers_pywebview_full_path(self) -> None:
+        event = {"dataTransfer": {"files": [{"pywebviewFullPath": "/tmp/voiceover.mp3", "path": "/wrong.mp3"}]}}
+        self.assertEqual(dropped_path(event), "/tmp/voiceover.mp3")
+
+    def test_dropped_path_rejects_missing_files(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Drop an MP3"):
+            dropped_path({"dataTransfer": {"files": []}})
 
     def test_claim_instance_blocks_a_second_process(self) -> None:
         with TemporaryDirectory() as directory:
