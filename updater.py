@@ -181,9 +181,9 @@ def apply(zip_path: Path) -> None:
 
 
 if __name__ == "__main__":
-    assert _is_newer("v0.0.5")
-    assert not _is_newer("v0.0.4")
-    assert _pick_asset([{"name": "VocalStripper-macos-arm64-v0.0.5.zip"}]) is not None
-    assert _pick_asset([{"name": "VocalStripper-windows-v0.0.5.zip"}]) is None
+    assert _is_newer("v0.0.6")
+    assert not _is_newer("v0.0.5")
+    assert _pick_asset([{"name": "VocalStripper-macos-arm64-v0.0.6.zip"}]) is not None
+    assert _pick_asset([{"name": "VocalStripper-windows-v0.0.6.zip"}]) is None
     assert app_root() is None
     assert check() is None

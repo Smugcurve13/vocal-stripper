@@ -322,7 +322,7 @@ def main() -> None:
         background_color="#171717",
     )
     api.window = window
-    webview.start(bind_drag_drop, window, api)
+    webview.start(bind_drag_drop, args=(window, api))
 
 
 if __name__ == "__main__":
