@@ -22,7 +22,20 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt pyinstaller
       - run: ./scripts/fetch_ffmpeg_macos.sh
-      - run: pyinstaller VocalStripper.spec --noconfirm --clean
+      - run: |
+          pyinstaller --onedir --windowed --clean --name VocalStripper \
+            --icon assets/VocalStripper.icns \
+            --add-data "index.html:." \
+            --add-data "privacy.html:." \
+            --add-data "assets/logo.svg:assets" \
+            --add-binary "assets/ffmpeg/macos/ffmpeg:assets/ffmpeg/macos" \
+            --add-binary "assets/ffmpeg/macos/ffprobe:assets/ffmpeg/macos" \
+            --hidden-import demucs.separate \
+            --collect-submodules demucs \
+            --collect-data demucs \
+            --collect-all torch \
+            --collect-all webview \
+            app.py
       - run: |
           codesign --force --deep --sign - dist/VocalStripper.app
           codesign --verify --deep --strict dist/VocalStripper.app
